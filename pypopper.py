@@ -144,7 +144,7 @@ def serve(host, port, msg):
 if __name__ == "__main__":
     if len(sys.argv) < 3:
         print __doc__
-        sys.exit()
+        sys.exit(0)
 
     host = ""
     port = sys.argv.pop(1)
@@ -156,6 +156,7 @@ if __name__ == "__main__":
         port = int(port)
     except Exception:
         print "Unknown port:", port
+        sys.exit(1)
 
     messages = []
     while len(sys.argv) > 1:

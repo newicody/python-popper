@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """pypopper: a file-based pop3 server
 
 Usage:

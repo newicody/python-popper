@@ -11,7 +11,7 @@ import traceback
 
 logging.basicConfig(format="%(name)s %(levelname)s - %(message)s")
 log = logging.getLogger("pypopper")
-log.setLevel(logging.INFO)
+log.setLevel(logging.DEBUG)
 
 class ChatterboxConnection(object):
     END = "\r\n"

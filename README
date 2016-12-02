@@ -1,0 +1,7 @@
+I needed a simple pop server to test a pop client.  Unfortunately, the debian
+package "fakepop" has been removed from the repositories.  So, I looked for
+and found
+    https://code.activestate.com/recipes/534131-pypopper-python-pop3-server/
+
+Unfortunately, it had a couple of bugs, so I have imported it into this repo
+

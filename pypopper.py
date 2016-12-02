@@ -87,6 +87,21 @@ def handleList(data, messages):
 
     return ''.join(s)
 
+def handleUidl(data, messages):
+    if data:
+        return "-ERR unhandled %s" %data
+
+    s = []
+    s.append("+OK unique-id listing follows\r\n")
+    msgno =1
+    for msg in messages:
+        s.append("%i %i\r\n" % (msgno, msgno))
+        msgno += 1
+
+    s.append('.')
+
+    return ''.join(s)
+
 def handleTop(data, messages):
     num, lines = data.split()
     try:
@@ -121,6 +136,7 @@ dispatch = dict(
     PASS=handlePass,
     STAT=handleStat,
     LIST=handleList,
+    UIDL=handleUidl,
     TOP=handleTop,
     RETR=handleRetr,
     DELE=handleDele,

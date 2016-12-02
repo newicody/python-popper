@@ -64,22 +64,48 @@ def handleUser(data, msg):
 def handlePass(data, msg):
     return "+OK pass accepted"
 
-def handleStat(data, msg):
-    return "+OK 1 %i" % msg.size
+def handleStat(data, messages):
+    size = 0
+    for msg in messages:
+        size += msg.size
+    return "+OK %i %i" % (len(messages), size)
 
-def handleList(data, msg):
-    return "+OK 1 messages (%i octets)\r\n1 %i\r\n." % (msg.size, msg.size)
+def handleList(data, messages):
+    if data:
+        return "-ERR unhandled"
 
-def handleTop(data, msg):
-    cmd, num, lines = data.split()
-    assert num == "1", "unknown message number: %s" % num
-    lines = int(lines)
-    text = msg.top + "\r\n\r\n" + "\r\n".join(msg.bot[:lines])
-    return "+OK top of message follows\r\n%s\r\n." % text
+    size = 0
+    s = []
+    msgno =1
+    for msg in messages:
+        s.append("%i %i\r\n" % (msgno, msg.size))
+        size += msg.size
+        msgno += 1
 
-def handleRetr(data, msg):
-    log.info("message sent")
-    return "+OK %i octets\r\n%s\r\n." % (msg.size, msg.data)
+    s.insert(0,"+OK %i messages (%i octets)\r\n" % (len(messages), size))
+    s.append('.')
+
+    return ''.join(s)
+
+def handleTop(data, messages):
+    num, lines = data.split()
+    try:
+        num = int(num)
+        lines = int(lines)
+        msg = messages[num-1]
+        text = msg.top + "\r\n\r\n" + "\r\n".join(msg.bot[:lines])
+        return "+OK top of message follows\r\n%s\r\n." % text
+    except Exception:
+        return "-ERR bad data %s" % data
+
+def handleRetr(data, messages):
+    try:
+        msgno = int(data)
+        msg = messages[msgno-1]
+        return "+OK %i octets\r\n%s\r\n." % (msg.size, msg.data)
+        log.info("message %i sent",msgno)
+    except Exception:
+        return "-ERR bad msgno %s" % data
 
 def handleDele(data, msg):
     return "+OK message 1 deleted"
@@ -102,7 +128,7 @@ dispatch = dict(
     QUIT=handleQuit,
 )
 
-def serve(host, port, msg):
+def serve(host, port, messages):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.bind((host, port))
     try:
@@ -121,18 +147,24 @@ def serve(host, port, msg):
                 while True:
                     data = conn.recvall()
                     if not data: break
-                    command = data.split(None, 1)[0]
+
+                    list = data.split(None, 1)
+                    command = list[0]
+                    if len(list) > 1:
+                        param = list[1]
+                    else:
+                        param = None
+
                     try:
                         cmd = dispatch[command]
                     except KeyError:
                         conn.sendall("-ERR unknown command")
                     else:
-                        conn.sendall(cmd(data, msg))
+                        conn.sendall(cmd(param, messages))
                         if cmd is handleQuit:
                             break
             finally:
                 conn.close()
-                msg = None
     except (SystemExit, KeyboardInterrupt):
         log.info("pypopper stopped")
     except Exception, ex:
@@ -167,4 +199,4 @@ if __name__ == "__main__":
 
         messages.append(Message(filename))
 
-    serve(host, port, messages[0])
+    serve(host, port, messages)

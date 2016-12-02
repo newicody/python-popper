@@ -30,6 +30,7 @@ class ChatterboxConnection(object):
         data = []
         while True:
             chunk = self.conn.recv(4096)
+            if not chunk: break
             if END in chunk:
                 data.append(chunk[:chunk.index(END)])
                 break
@@ -120,6 +121,7 @@ def serve(host, port, filename):
                 conn.sendall("+OK pypopper file-based pop3 server ready")
                 while True:
                     data = conn.recvall()
+                    if not data: break
                     command = data.split(None, 1)[0]
                     try:
                         cmd = dispatch[command]

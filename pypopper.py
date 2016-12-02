@@ -58,13 +58,13 @@ class Message(object):
             msg.close()
 
 
-def handleUser(data, msg):
+def handleUser(unused1, unused2):
     return "+OK user accepted"
 
-def handlePass(data, msg):
+def handlePass(unused1, unused2):
     return "+OK pass accepted"
 
-def handleStat(data, messages):
+def handleStat(unused1, messages):
     size = 0
     for msg in messages:
         size += msg.size
@@ -107,13 +107,13 @@ def handleRetr(data, messages):
     except Exception:
         return "-ERR bad msgno %s" % data
 
-def handleDele(data, msg):
+def handleDele(unused1, unused2):
     return "+OK message 1 deleted"
 
-def handleNoop(data, msg):
+def handleNoop(unused1, unused2):
     return "+OK"
 
-def handleQuit(data, msg):
+def handleQuit(unused1, unused2):
     return "+OK pypopper POP3 server signing off"
 
 dispatch = dict(

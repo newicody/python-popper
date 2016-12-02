@@ -72,7 +72,7 @@ def handleStat(unused1, messages):
 
 def handleList(data, messages):
     if data:
-        return "-ERR unhandled"
+        return "-ERR unhandled %s" %data
 
     size = 0
     s = []

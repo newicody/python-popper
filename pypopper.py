@@ -2,7 +2,7 @@
 """pypopper: a file-based pop3 server
 
 Usage:
-    python pypopper.py <port> <path_to_message_file>
+    python pypopper.py <port> <path_to_message_file(s)...>
 """
 import logging
 import os

@@ -148,18 +148,19 @@ if __name__ == "__main__":
         print __doc__
         sys.exit()
 
-    _, port, filename = sys.argv
+    host = ""
+    port = sys.argv[1]
     if ":" in port:
         host = port[:port.index(":")]
         port = port[port.index(":") + 1:]
-    else:
-        host = ""
+
     try:
         port = int(port)
     except Exception:
         print "Unknown port:", port
-    else:
-        if os.path.exists(filename):
-            serve(host, port, filename)
-        else:
-            print "File not found:", filename
+
+    filename = sys.argv[2]
+    if not os.path.exists(filename):
+        print "File not found:", filename
+
+    serve(host, port, filename)

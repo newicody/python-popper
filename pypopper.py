@@ -102,8 +102,7 @@ dispatch = dict(
     QUIT=handleQuit,
 )
 
-def serve(host, port, filename):
-    assert os.path.exists(filename)
+def serve(host, port, msg):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.bind((host, port))
     try:
@@ -111,13 +110,12 @@ def serve(host, port, filename):
             hostname = host
         else:
             hostname = "localhost"
-        log.info("pypopper POP3 serving '%s' on %s:%s", filename, hostname, port)
+        log.info("serving POP3 on %s:%s", hostname, port)
         while True:
             sock.listen(1)
             conn, addr = sock.accept()
             log.debug('Connected by %s', addr)
             try:
-                msg = Message(filename)
                 conn = ChatterboxConnection(conn)
                 conn.sendall("+OK pypopper file-based pop3 server ready")
                 while True:
@@ -144,12 +142,12 @@ def serve(host, port, filename):
         sock.close()
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
+    if len(sys.argv) < 3:
         print __doc__
         sys.exit()
 
     host = ""
-    port = sys.argv[1]
+    port = sys.argv.pop(1)
     if ":" in port:
         host = port[:port.index(":")]
         port = port[port.index(":") + 1:]
@@ -159,8 +157,13 @@ if __name__ == "__main__":
     except Exception:
         print "Unknown port:", port
 
-    filename = sys.argv[2]
-    if not os.path.exists(filename):
-        print "File not found:", filename
+    messages = []
+    while len(sys.argv) > 1:
+        filename = sys.argv.pop(1)
+        if not os.path.exists(filename):
+            print "File not found:", filename
+            break
 
-    serve(host, port, filename)
+        messages.append(Message(filename))
+
+    serve(host, port, messages[0])

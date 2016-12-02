@@ -51,8 +51,8 @@ class Message(object):
         try:
             self.data = data = msg.read()
             self.size = len(data)
-            self.top, bot = data.split("\r\n\r\n", 1)
-            self.bot = bot.split("\r\n")
+            self.top, bot = data.split("\n\n", 1)
+            self.bot = bot.split("\n")
         finally:
             msg.close()
 

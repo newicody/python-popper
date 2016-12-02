@@ -1,6 +1,6 @@
 """pypopper: a file-based pop3 server
 
-Useage:
+Usage:
     python pypopper.py <port> <path_to_message_file>
 """
 import logging
@@ -144,20 +144,21 @@ def serve(host, port, filename):
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
-        print "USAGE: [<host>:]<port> <path_to_message_file>"
+        print __doc__
+        sys.exit()
+
+    _, port, filename = sys.argv
+    if ":" in port:
+        host = port[:port.index(":")]
+        port = port[port.index(":") + 1:]
     else:
-        _, port, filename = sys.argv
-        if ":" in port:
-            host = port[:port.index(":")]
-            port = port[port.index(":") + 1:]
+        host = ""
+    try:
+        port = int(port)
+    except Exception:
+        print "Unknown port:", port
+    else:
+        if os.path.exists(filename):
+            serve(host, port, filename)
         else:
-            host = ""
-        try:
-            port = int(port)
-        except Exception:
-            print "Unknown port:", port
-        else:
-            if os.path.exists(filename):
-                serve(host, port, filename)
-            else:
-                print "File not found:", filename
+            print "File not found:", filename

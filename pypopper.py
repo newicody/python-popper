@@ -181,7 +181,13 @@ def serve(host, port, messages):
                     except KeyError:
                         conn.sendall("-ERR unknown command")
                     else:
-                        conn.sendall(cmd(param, messages))
+                        result = cmd(param, messages)
+                        try:
+                            conn.sendall(result)
+                        except Exception:
+                            # socket might go away during sendall
+                            break
+
                         if cmd is handleQuit:
                             break
             finally:

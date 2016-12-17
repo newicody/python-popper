@@ -5,3 +5,6 @@ and found
 
 Unfortunately, it had a couple of bugs, so I have imported it into this repo
 
+This tool now supports multiple messages and you should be able to point it
+at a maildir with "pypopper.py $maildir/cur/* $maildir/new/*"
+

@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 """pypopper: a file-based pop3 server
 
 Usage:
@@ -45,7 +46,6 @@ class ChatterboxConnection(object):
         log.debug("recv: %r", "".join(data))
         return "".join(data)
 
-
 class Message(object):
     def __init__(self, filename):
         msg = open(filename, "r")
@@ -56,8 +56,6 @@ class Message(object):
             self.bot = bot.split("\n")
         finally:
             msg.close()
-
-
 def handleUser(unused1, unused2):
     return "+OK user accepted"
 
@@ -65,6 +63,7 @@ def handlePass(unused1, unused2):
     return "+OK pass accepted"
 
 def handleStat(unused1, messages):
+    print messages
     size = 0
     for msg in messages:
         size += msg.size
@@ -78,7 +77,6 @@ def handleList(data, messages):
             return "+OK %i %i" % (msgno, msg.size)
         except Exception:
             return "-ERR bad data %s" % data
-
     size = 0
     s = []
     msgno =1
@@ -91,20 +89,16 @@ def handleList(data, messages):
     s.append('.')
 
     return ''.join(s)
-
 def handleUidl(data, messages):
     if data:
         return "-ERR unhandled %s" %data
-
     s = []
     s.append("+OK unique-id listing follows\r\n")
     msgno =1
     for msg in messages:
         s.append("%i %i\r\n" % (msgno, msgno))
         msgno += 1
-
     s.append('.')
-
     return ''.join(s)
 
 def handleTop(data, messages):
@@ -126,10 +120,9 @@ def handleRetr(data, messages):
         log.info("message %i sent",msgno)
     except Exception:
         return "-ERR bad msgno %s" % data
-
 def handleDele(unused1, unused2):
     return "+OK message 1 deleted"
-
+    
 def handleNoop(unused1, unused2):
     return "+OK"
 
@@ -141,7 +134,7 @@ dispatch = dict(
     PASS=handlePass,
     STAT=handleStat,
     LIST=handleList,
-    UIDL=handleUidl,
+    # UIDL=handleUidl,
     TOP=handleTop,
     RETR=handleRetr,
     DELE=handleDele,
@@ -149,7 +142,7 @@ dispatch = dict(
     QUIT=handleQuit,
 )
 
-def serve(host, port, messages):
+def serve(host, port, follow, messages):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.bind((host, port))
     try:
@@ -158,24 +151,24 @@ def serve(host, port, messages):
         else:
             hostname = "localhost"
         log.info("serving POP3 on %s:%s", hostname, port)
+
         while True:
             sock.listen(1)
             conn, addr = sock.accept()
             log.debug('Connected by %s', addr)
+            listing(follow,messages)
             try:
                 conn = ChatterboxConnection(conn)
                 conn.sendall("+OK pypopper file-based pop3 server ready")
                 while True:
                     data = conn.recvall()
                     if not data: break
-
-                    list = data.split(None, 1)
+                    list = data. split(None, 1)
                     command = list[0]
                     if len(list) > 1:
                         param = list[1]
                     else:
                         param = None
-
                     try:
                         cmd = dispatch[command]
                     except KeyError:
@@ -187,10 +180,10 @@ def serve(host, port, messages):
                         except Exception:
                             # socket might go away during sendall
                             break
-
                         if cmd is handleQuit:
+                            messages=[]
                             break
-            finally:
+finally:
                 conn.close()
     except (SystemExit, KeyboardInterrupt):
         log.info("pypopper stopped")
@@ -199,6 +192,17 @@ def serve(host, port, messages):
     finally:
         sock.shutdown(socket.SHUT_RDWR)
         sock.close()
+
+def listing(follow,messages):
+    for elt in follow:
+        if not os.path.exists(elt):
+            print "Path not found:", elt
+            break
+        print "Serving :"
+        for elt2 in os.listdir(elt):
+            pathfile = elt+elt2
+            print pathfile
+            messages.append(Message(pathfile))
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
@@ -210,20 +214,12 @@ if __name__ == "__main__":
     if ":" in port:
         host = port[:port.index(":")]
         port = port[port.index(":") + 1:]
-
     try:
         port = int(port)
     except Exception:
         print "Unknown port:", port
         sys.exit(1)
-
-    messages = []
-    while len(sys.argv) > 1:
-        filename = sys.argv.pop(1)
-        if not os.path.exists(filename):
-            print "File not found:", filename
-            break
-
-        messages.append(Message(filename))
-
-    serve(host, port, messages)
+    sys.argv.pop(0)
+    follow = sys.argv
+    messages=[]
+    serve(host, port, follow, messages)

@@ -1,24 +1,29 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""pypopper: a file-based pop3 server
 
-Usage:
-    python pypopper.py <port> <path_to_message_file(s)...>
+""" pypopper: a file-based pop3 server
+    Usage:
+    python pypopper.py <host> <port>
 """
+
 import logging
 import os
 import socket
 import sys
 import traceback
 
+import crypt
+
 logging.basicConfig(format="%(name)s %(levelname)s - %(message)s")
 log = logging.getLogger("pypopper")
 log.setLevel(logging.DEBUG)
-
+messages=[]
 class ChatterboxConnection(object):
     END = "\r\n"
     def __init__(self, conn):
         self.conn = conn
+        self.user = ""
+        self.aliasa = ""
     def __getattr__(self, name):
         return getattr(self.conn, name)
     def sendall(self, data, END=END):
@@ -28,7 +33,9 @@ class ChatterboxConnection(object):
             log.debug("send: %r...", data[:50])
         data += END
         self.conn.sendall(data)
+
     def recvall(self, END=END):
+        usera=""
         data = []
         while True:
             chunk = self.conn.recv(4096)
@@ -43,6 +50,61 @@ class ChatterboxConnection(object):
                     data[-2] = pair[:pair.index(END)]
                     data.pop()
                     break
+
+        if data[0].split(" ")[0]=="USER":
+            self.user = data[0].split(" ")[1]
+            print "Le login donner "+self.user
+            alias = open('/etc/mail/aliases','r')
+            ase = alias.read()
+            a = ase.split("\n")
+            print "recherche du compte correspondant..."
+            for elt in a:
+                if len(elt)<1:
+                    print "ligne vide"
+                    print "fin."
+                    break
+                print "ligne non vide"
+                try:
+                    usera = elt.split(": ")[0]
+                    self.aliasa = elt.split(": ")[1]
+                    if usera==self.user:
+                        ali=self.aliasa
+
+                        print "Un compte a ete trouve ("+ali+")"
+                        break
+                except:
+                    print "Ne trouve pas l'utilisateur correspondant"
+            alias.close()
+
+        if data[0].split(" ")[0]=="PASS":
+            passwz = data[0].split(" ")[1]
+            print "Le mot de passe donner est "+passwz
+            path_sha = "/etc/shadow" #ouverture du ficier shadow
+            pss = open(path_sha,'r')
+            shline = pss.read() # rendre lisible le shadpw
+            fsh = shline.split("\n") #convertir en liste de lignes
+            print "recherche du compte correspondant..."
+            for elt in fsh: #parcourir chaque ligne
+                if len(elt)<1:
+                    print "ligne vide"
+                    print "fin"
+                    break
+                if elt.split(":")[0]==self.user:
+                    shadow_hash = elt.split(":")[1]
+                    print "Recherche dans le fichier shadow :\n"+shadow_hash
+                    request_hash = crypt.crypt(passwz, "$6$"+elt.split("$6$")[1].split("$")[0]) # genere ligne shadow
+                    print "hash du pass propose :\n"+request_hash
+                    try:
+                        if request_hash != shadow_hash:
+                            return false
+                        else:
+                            print "le mot de passe est bon"
+                            print "le compte est"+self.aliasa+" listing :"
+                            listing(self.aliasa,messages)
+                            break
+                    except:
+                        print "le mdp nest pas bon"
+            pss.close()
         log.debug("recv: %r", "".join(data))
         return "".join(data)
 
@@ -56,14 +118,14 @@ class Message(object):
             self.bot = bot.split("\n")
         finally:
             msg.close()
+
 def handleUser(unused1, unused2):
     return "+OK user accepted"
 
 def handlePass(unused1, unused2):
     return "+OK pass accepted"
 
-def handleStat(unused1, messages):
-    print messages
+def handleStat(unused1,messages):
     size = 0
     for msg in messages:
         size += msg.size
@@ -77,6 +139,7 @@ def handleList(data, messages):
             return "+OK %i %i" % (msgno, msg.size)
         except Exception:
             return "-ERR bad data %s" % data
+
     size = 0
     s = []
     msgno =1
@@ -89,16 +152,20 @@ def handleList(data, messages):
     s.append('.')
 
     return ''.join(s)
+
 def handleUidl(data, messages):
     if data:
         return "-ERR unhandled %s" %data
+
     s = []
     s.append("+OK unique-id listing follows\r\n")
     msgno =1
     for msg in messages:
         s.append("%i %i\r\n" % (msgno, msgno))
         msgno += 1
+
     s.append('.')
+
     return ''.join(s)
 
 def handleTop(data, messages):
@@ -120,9 +187,10 @@ def handleRetr(data, messages):
         log.info("message %i sent",msgno)
     except Exception:
         return "-ERR bad msgno %s" % data
+
 def handleDele(unused1, unused2):
-    return "+OK message 1 deleted"
-    
+    return "+OK message 1 deleted "
+
 def handleNoop(unused1, unused2):
     return "+OK"
 
@@ -134,7 +202,7 @@ dispatch = dict(
     PASS=handlePass,
     STAT=handleStat,
     LIST=handleList,
-    # UIDL=handleUidl,
+    UIDL=handleUidl,
     TOP=handleTop,
     RETR=handleRetr,
     DELE=handleDele,
@@ -142,21 +210,21 @@ dispatch = dict(
     QUIT=handleQuit,
 )
 
-def serve(host, port, follow, messages):
+follow=""
+def serve(host, port,messages):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.bind((host, port))
     try:
         if host:
             hostname = host
         else:
-            hostname = "localhost"
+            hostname = "127.0.0.1"
         log.info("serving POP3 on %s:%s", hostname, port)
 
         while True:
             sock.listen(1)
             conn, addr = sock.accept()
             log.debug('Connected by %s', addr)
-            listing(follow,messages)
             try:
                 conn = ChatterboxConnection(conn)
                 conn.sendall("+OK pypopper file-based pop3 server ready")
@@ -182,8 +250,9 @@ def serve(host, port, follow, messages):
                             break
                         if cmd is handleQuit:
                             messages=[]
+                            follow=""
                             break
-finally:
+            finally:
                 conn.close()
     except (SystemExit, KeyboardInterrupt):
         log.info("pypopper stopped")
@@ -194,18 +263,22 @@ finally:
         sock.close()
 
 def listing(follow,messages):
-    for elt in follow:
-        if not os.path.exists(elt):
-            print "Path not found:", elt
-            break
-        print "Serving :"
-        for elt2 in os.listdir(elt):
-            pathfile = elt+elt2
-            print pathfile
+    papat="/home/"+follow+"/Maildir/new/"
+    if not os.path.exists(papat):
+        print "Path not found:"
+    print "Serving :"
+    for elt2 in os.listdir(papat):
+        pathfile = papat+elt2
+        print pathfile
+        try:
             messages.append(Message(pathfile))
+        except:
+            print "message non ajoute"
+            break
+        os.remove(pathfile)
 
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
+    if len(sys.argv) < 2:
         print __doc__
         sys.exit(0)
 
@@ -220,6 +293,5 @@ if __name__ == "__main__":
         print "Unknown port:", port
         sys.exit(1)
     sys.argv.pop(0)
-    follow = sys.argv
-    messages=[]
-    serve(host, port, follow, messages)
+
+    serve(host, port,messages)
